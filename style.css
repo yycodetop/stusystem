@@ -1,0 +1,273 @@
+/* ================= 基础设置 ================= */
+body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background-color: #f8fafc;
+}
+
+/* ================= 滚动条美化 ================= */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* 暗色模式下的滚动条（用于IDE和判题区域） */
+.dark-scroll::-webkit-scrollbar-thumb { background: #475569; }
+.dark-scroll::-webkit-scrollbar-thumb:hover { background: #64748b; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* 自定义细滚动条 */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+/* ================= 动画定义 ================= */
+/* Vue Transition Classes */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.fade-enter-from { opacity: 0; transform: translateY(10px); }
+.fade-leave-to { opacity: 0; transform: translateY(-10px); }
+
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.3s ease; }
+.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translate(-50%, -20px); }
+
+/* 通用 CSS 动画类 */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes slideInRight {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right {
+    animation: slideInRight 0.3s ease-out forwards;
+}
+
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+}
+
+/* 判题节点呼吸动画 */
+@keyframes processing-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); border-color: #818cf8; }
+    70% { box-shadow: 0 0 0 6px rgba(99, 102, 241, 0); border-color: #6366f1; }
+    100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); border-color: #818cf8; }
+}
+
+/* 成功节点的弹跳效果 */
+@keyframes pop-success {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* ================= 组件交互效果 ================= */
+/* 首页卡片 */
+.module-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.module-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+
+/* 底部 Dock */
+.dock-item { transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.dock-item:active { transform: scale(0.95); }
+
+/* 磨砂玻璃效果 */
+.backdrop-blur-md { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.backdrop-blur-xl { backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+
+/* 天梯题目发光卡片 */
+.card-glow { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.card-glow:hover { border-color: #60a5fa; box-shadow: 0 0 15px rgba(96, 165, 250, 0.3); transform: translateY(-4px); }
+
+.level-completed { border: 2px solid #fbbf24; background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%); box-shadow: 0 4px 6px -1px rgba(251, 191, 36, 0.2); }
+.level-completed .level-text { color: #d97706; }
+
+/* 排行榜前三名光效 */
+.rank-1-glow { box-shadow: 0 0 15px rgba(251, 191, 36, 0.6); border-color: #fcd34d; }
+.rank-2-glow { box-shadow: 0 0 10px rgba(148, 163, 184, 0.4); border-color: #cbd5e1; }
+.rank-3-glow { box-shadow: 0 0 10px rgba(217, 119, 6, 0.4); border-color: #fdba74; }
+
+/* ================= 终端与编辑器 ================= */
+.terminal-font {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+.blink-cursor::after {
+    content: '▋';
+    animation: blink 1s step-end infinite;
+    margin-left: 2px;
+    vertical-align: text-bottom;
+}
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* 运行/调试输入区域样式 */
+.run-input-area { 
+    background-color: #1e1e1e; 
+    color: #d4d4d4; 
+    border: 1px solid #333;
+}
+.run-input-area:focus { border-color: #6366f1; }
+.run-output-area { background-color: #0f111a; border-top: 1px solid #333; }
+
+/* 调试控制台输入框 */
+.debug-input {
+    background: transparent;
+    border: none;
+    color: white;
+    font-family: 'JetBrains Mono', monospace;
+    width: 100%;
+    outline: none;
+}
+
+/* 随笔编辑器的自定义光标 */
+textarea.custom-scrollbar::selection {
+    background: rgba(99, 102, 241, 0.4);
+    color: white;
+}
+
+/* ================= 判题界面专用 ================= */
+
+/* 测试点状态节点 */
+.judge-node {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+.judge-node.running {
+    animation: processing-pulse 1.5s infinite;
+}
+.judge-node.passed {
+    animation: pop-success 0.3s ease-out;
+    border-color: #22c55e; /* Green-500 */
+    background-color: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+}
+.judge-node.failed {
+    border-color: #ef4444; /* Red-500 */
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* Diff 对比视图样式 */
+.diff-container {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+}
+.diff-line-actual { 
+    background-color: rgba(239, 68, 68, 0.15); 
+    color: #fca5a5; 
+    border-left: 3px solid #ef4444;
+    padding-left: 8px;
+    display: block;
+    width: 100%;
+}
+.diff-line-expect { 
+    background-color: rgba(34, 197, 94, 0.15); 
+    color: #86efac; 
+    border-left: 3px solid #22c55e;
+    padding-left: 8px;
+    display: block;
+    width: 100%;
+}
+
+/* ================= 题目详情弹窗专用 ================= */
+
+/* 数据范围高亮卡片 */
+.constraint-card {
+    background: linear-gradient(to right, #fefce8, #fff7ed); /* Yellow-50 to Orange-50 */
+    border: 1px solid #fde047; /* Yellow-300 */
+    border-left-width: 4px;
+    border-left-color: #eab308; /* Yellow-500 */
+    color: #854d0e; /* Yellow-800 */
+    font-family: 'JetBrains Mono', monospace;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 背景纹理装饰 */
+.constraint-card::after {
+    content: 'CONSTRAINTS';
+    position: absolute;
+    right: 10px;
+    bottom: -10px;
+    font-size: 3rem;
+    font-weight: 900;
+    color: rgba(234, 179, 8, 0.05); /* Very faint yellow */
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* 样例代码框容器 */
+.sample-box {
+    position: relative;
+}
+.sample-box:hover .copy-btn {
+    opacity: 1;
+}
+.copy-btn {
+    opacity: 0;
+    transition: opacity 0.2s;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
+.copy-btn:hover {
+    color: #4f46e5;
+    border-color: #c7d2fe;
+}
+
+/* ================= 荣誉中心专用样式 ================= */
+
+/* 荣誉卡片衬底：模拟深色天鹅绒或高端展示台背景 */
+.honor-card-bg {
+    background-color: #334155; /* Slate-700 */
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(255,255,255,0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(0,0,0,0.2) 0px, transparent 50%);
+    position: relative;
+}
+
+/* 纸张阴影：让图片看起来是浮在背景上的纸张 */
+.paper-shadow {
+    box-shadow: 
+        0 1px 1px rgba(0,0,0,0.15), 
+        0 2px 2px rgba(0,0,0,0.15), 
+        0 4px 4px rgba(0,0,0,0.15), 
+        0 8px 8px rgba(0,0,0,0.15);
+}
+
+/* 奖状大图模态框背景 */
+.honor-modal-backdrop {
+    background-color: rgba(15, 23, 42, 0.95); /* Slate-900 with opacity */
+    backdrop-filter: blur(8px);
+}
+
+/* ================= 知识库专用样式 (Prose) ================= */
+/* 简单的排版优化，模拟 Tailwind Typography */
+.prose h1 { font-size: 2.25em; margin-top: 0; margin-bottom: 0.8888889em; line-height: 1.1111111; font-weight: 800; }
+.prose h2 { font-size: 1.5em; margin-top: 2em; margin-bottom: 1em; line-height: 1.3333333; font-weight: 700; }
+.prose h3 { font-size: 1.25em; margin-top: 1.6em; margin-bottom: 0.6em; line-height: 1.6; font-weight: 600; }
+.prose p { margin-top: 1.25em; margin-bottom: 1.25em; line-height: 1.75; }
+.prose ul { margin-top: 1.25em; margin-bottom: 1.25em; list-style-type: disc; padding-left: 1.625em; }
+.prose li { margin-top: 0.5em; margin-bottom: 0.5em; }
+.prose code { color: #0f172a; font-weight: 600; font-size: 0.875em; background-color: #f1f5f9; padding: 0.25em 0.375em; rounded: 0.25rem; }
+.prose pre { color: #e2e8f0; background-color: #1e293b; overflow-x: auto; font-size: 0.875em; line-height: 1.7142857; margin-top: 1.7142857em; margin-bottom: 1.7142857em; border-radius: 0.375rem; padding: 0.8571429em 1.1428571em; }
+.prose pre code { background-color: transparent; border-width: 0; border-radius: 0; padding: 0; font-weight: 400; color: inherit; font-size: inherit; font-family: inherit; line-height: inherit; }
+.prose blockquote { font-weight: 500; font-style: italic; color: #111827; border-left-width: 0.25rem; border-left-color: #e5e7eb; quotes: "\201C""\201D""\2018""\2019"; margin-top: 1.6em; margin-bottom: 1.6em; padding-left: 1em; }
