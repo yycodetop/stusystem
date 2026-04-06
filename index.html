@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原因STEAM教育平台 - 学生端</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    <script>
+        if (typeof require !== 'undefined') {
+            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+        } else {
+            console.warn('Monaco Editor loader failed to load. "require" is undefined.');
+        }
+    </script>
+    
+    <!-- Icons & Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css"> 
+</head>
+<body class="text-slate-800 h-screen overflow-hidden flex flex-col bg-slate-50">
+
+    <!-- 全局点击事件用于关闭各类下拉面板 -->
+    <div id="app" class="flex flex-col h-full w-full relative" v-cloak @click="closeAllPanels()">
+        
+        <!-- 顶部综合导航栏 -->
+        <transition name="fade">
+            <header v-show="!isImmersiveMode" class="h-20 bg-white/95 backdrop-blur-xl border-b border-slate-200 px-8 flex items-center justify-between z-40 flex-shrink-0 shadow-sm relative transition-all duration-300">
+                
+                <!-- 左侧: 品牌与导航 -->
+                <div class="flex items-center gap-4">
+                    <button v-if="currentView !== 'dashboard'" @click.stop="goBack" class="size-10 rounded-full bg-slate-100 hover:bg-indigo-100 text-slate-500 hover:text-indigo-600 flex items-center justify-center transition shadow-sm hover:scale-110 mr-2">
+                        <i class="fa-solid fa-arrow-left text-sm"></i>
+                    </button>
+
+                    <div class="size-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 cursor-pointer transition-transform hover:scale-105" @click.stop="currentView = 'dashboard'">
+                        <i class="fa-solid fa-code text-white text-xl"></i>
+                    </div>
+
+                    <div class="flex flex-col justify-center">
+                        <h1 class="text-xl font-black text-slate-800 tracking-tight leading-none cursor-pointer" @click.stop="currentView = 'dashboard'">
+                            原因STEAM教育平台
+                        </h1>
+                        <div v-if="currentView !== 'dashboard'" class="flex items-center gap-2 text-xs font-bold text-indigo-500 mt-1 animate-fade-in">
+                            <span class="size-1.5 rounded-full bg-indigo-500"></span>
+                            {{ pageTitle }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧: 个人中心与工具 -->
+                <div class="flex items-center gap-6">
+                    
+                    <!-- 星耀学员入口 -->
+                    <div class="relative">
+                        <button @click.stop="showStarStudentPanel = true" class="h-10 px-4 rounded-xl bg-gradient-to-r from-slate-900 to-indigo-900 hover:from-indigo-600 hover:to-purple-600 text-amber-400 hover:text-white transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20 group hover:shadow-indigo-500/40 border border-white/10">
+                            <i class="fa-solid fa-star text-sm animate-pulse"></i>
+                            <span class="text-xs font-black tracking-wide">星耀评价</span>
+                        </button>
+                    </div>
+
+                    <!-- 资产排行榜入口 -->
+                    <div class="relative">
+                        <button @click.stop="showWealthPanel = true" class="size-10 rounded-xl bg-slate-50 hover:bg-gradient-to-br hover:from-amber-400 hover:to-orange-500 border border-transparent hover:border-amber-400/50 text-slate-500 hover:text-white transition flex items-center justify-center relative shadow-sm group">
+                            <i class="fa-solid fa-ranking-star text-lg group-hover:scale-110 transition-transform"></i>
+                        </button>
+                    </div>
+
+                    <!-- 工具箱入口 -->
+                    <div class="relative mr-2">
+                        <button @click.stop="showToolboxPanel = true" class="size-10 rounded-xl bg-slate-50 hover:bg-gradient-to-br hover:from-cyan-400 hover:to-blue-500 border border-transparent hover:border-cyan-400/50 text-slate-500 hover:text-white transition flex items-center justify-center relative shadow-sm group">
+                            <i class="fa-solid fa-toolbox text-lg group-hover:scale-110 transition-transform"></i>
+                        </button>
+                    </div>
+
+                    <!-- 卡包入口 -->
+                    <div class="relative">
+                        <button @click.stop="toggleCardPanel" class="size-10 rounded-xl bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 text-slate-500 hover:text-amber-600 transition flex items-center justify-center relative shadow-sm group">
+                            <i class="fa-solid fa-wallet text-lg group-hover:-rotate-12 transition-transform"></i>
+                            <span v-if="user.cards.some(c => c.status === 'active' || c.status === 'inactive')" class="absolute top-2 right-2 size-2 bg-amber-500 rounded-full border-2 border-white animate-pulse"></span>
+                        </button>
+                    </div>
+
+                    <!-- 消息中心 (通知/消息分栏) -->
+                    <div class="relative z-50">
+                        <button id="notification-bell" @click.stop="toggleTaskPanel" class="size-10 rounded-xl bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 text-slate-500 hover:text-indigo-600 transition flex items-center justify-center relative shadow-sm group">
+                            <i class="fa-solid fa-bell text-lg group-hover:rotate-12 transition-transform"></i>
+                            <span v-if="unreadCount > 0" class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                        </button>
+                        
+                        <transition name="fade">
+                            <div v-if="showTaskPanel" @click.stop class="absolute top-full right-0 mt-4 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-[100] origin-top-right ring-1 ring-black/5 flex flex-col">
+                                
+                                <!-- Tab 切换头部 -->
+                                <div class="flex border-b border-slate-100">
+                                    <button class="flex-1 py-3 text-sm font-bold transition border-b-2 relative" 
+                                        :class="notificationTab === 'teacher' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/50' : 'text-slate-400 border-transparent hover:text-slate-600 hover:bg-slate-50'"
+                                        @click="notificationTab = 'teacher'">
+                                        <i class="fa-solid fa-chalkboard-user mr-1"></i> 通知
+                                        <span v-if="teacherUnread > 0" class="ml-1 text-[10px] bg-red-500 text-white px-1.5 rounded-full shadow-sm">{{ teacherUnread }}</span>
+                                    </button>
+                                    <div class="w-px bg-slate-100 my-2"></div>
+                                    <button class="flex-1 py-3 text-sm font-bold transition border-b-2 relative"
+                                        :class="notificationTab === 'system' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/50' : 'text-slate-400 border-transparent hover:text-slate-600 hover:bg-slate-50'"
+                                        @click="notificationTab = 'system'">
+                                        <i class="fa-solid fa-bullhorn mr-1"></i> 消息
+                                        <span v-if="systemUnread > 0" class="ml-1 text-[10px] bg-red-500 text-white px-1.5 rounded-full shadow-sm">{{ systemUnread }}</span>
+                                    </button>
+                                </div>
+
+                                <!-- 简略列表内容区域 -->
+                                <div class="max-h-[350px] overflow-y-auto p-1 custom-scrollbar min-h-[150px] bg-slate-50/30">
+                                    
+                                    <!-- 1. 教师通知列表 -->
+                                    <template v-if="notificationTab === 'teacher'">
+                                        <div v-if="teacherNotifications.length === 0" class="text-center py-8 text-slate-400">
+                                            <div class="size-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fa-solid fa-check text-slate-300"></i></div>
+                                            <p class="text-xs">暂无教师通知</p>
+                                        </div>
+                                        <div v-for="note in teacherNotifications.slice(0, 3)" :key="note.id" 
+                                             class="p-3 m-1 rounded-xl bg-white border border-slate-100 hover:border-indigo-200 hover:shadow-md transition group cursor-pointer relative overflow-hidden">
+                                            <div v-if="!note.read" class="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500"></div>
+                                            <div class="flex items-start gap-3 pl-2">
+                                                <div class="size-8 rounded-full shrink-0 flex items-center justify-center text-white text-xs shadow-sm"
+                                                     :class="note.urgent ? 'bg-rose-500' : 'bg-indigo-500'">
+                                                     <i class="fa-solid" :class="note.urgent ? 'fa-fire' : 'fa-user-tie'"></i>
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex justify-between items-start mb-0.5">
+                                                        <span class="text-xs font-bold text-slate-700 truncate pr-2 group-hover:text-indigo-600 transition">{{ note.title }}</span>
+                                                        <span class="text-[10px] text-slate-300 shrink-0">{{ note.time }}</span>
+                                                    </div>
+                                                    <p class="text-[10px] text-slate-400 line-clamp-1">{{ note.desc }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <!-- 2. 系统消息列表 -->
+                                    <template v-else>
+                                        <div v-if="systemMessages.length === 0" class="text-center py-8 text-slate-400">
+                                            <div class="size-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fa-regular fa-bell-slash text-slate-300"></i></div>
+                                            <p class="text-xs">暂无系统消息</p>
+                                        </div>
+                                        <div v-for="msg in systemMessages.slice(0, 3)" :key="msg.id" 
+                                             class="p-3 m-1 rounded-xl hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition group cursor-pointer">
+                                            <div class="flex items-center gap-3">
+                                                <div class="size-8 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center text-slate-400 text-xs group-hover:bg-white group-hover:text-indigo-500 transition shadow-inner">
+                                                     <i :class="msg.icon"></i>
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex justify-between items-center mb-0.5">
+                                                        <span class="text-xs font-bold text-slate-600 group-hover:text-slate-800 transition" :class="{'font-normal text-slate-400': msg.read}">{{ msg.title }}</span>
+                                                        <span class="text-[10px] text-slate-300">{{ msg.time }}</span>
+                                                    </div>
+                                                </div>
+                                                <div v-if="!msg.read" class="size-2 rounded-full bg-red-500 shrink-0"></div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <!-- 底部操作栏 -->
+                                <div class="bg-slate-50 p-2 text-center border-t border-slate-100 flex justify-between px-4 items-center">
+                                    <button class="text-[10px] text-slate-400 hover:text-indigo-600 transition" @click="markAllRead">全部已读</button>
+                                    <button @click="openNotificationCenter" class="text-[10px] text-indigo-500 font-bold hover:text-indigo-700 transition flex items-center gap-1">
+                                        查看更多 <i class="fa-solid fa-angle-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </transition>
+                    </div>
+
+                    <!-- 用户头像 -->
+                    <div class="flex items-center gap-3 group relative cursor-pointer ml-2 pl-4 border-l border-slate-200" @click.stop>
+                        <div class="text-right hidden xl:block">
+                            <div class="text-sm font-bold text-slate-800">{{ user.name }}</div>
+                            <div class="text-[10px] text-indigo-500 font-bold">L{{ user.level }} 进阶学员</div>
+                        </div>
+                        <div class="relative">
+                            <img :src="user.avatar" class="size-10 rounded-full border-2 border-white shadow-md object-cover transition-transform group-hover:scale-105">
+                            <div class="absolute -bottom-0.5 -right-0.5 size-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        </div>
+
+                        <!-- 下拉菜单 -->
+                        <div class="absolute top-full right-0 mt-4 w-56 bg-white rounded-xl shadow-xl border border-slate-100 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all transform origin-top-right z-50 translate-y-2 group-hover:translate-y-0">
+                            <div class="p-2 space-y-1">
+                                <div class="px-3 py-2 border-b border-slate-50 mb-1 xl:hidden">
+                                    <p class="text-sm font-bold text-slate-800">{{ user.name }}</p>
+                                    <p class="text-xs text-indigo-500">Lv.{{ user.level }}</p>
+                                </div>
+                                <button @click="showProfileEditPanel = true" class="w-full text-left px-3 py-3 text-sm text-slate-600 hover:bg-slate-50 hover:text-indigo-600 rounded-lg flex items-center gap-3 transition">
+                                    <i class="fa-solid fa-user-pen text-slate-400 w-5 text-center"></i> 编辑资料
+                                </button>
+                                <button @click.stop="showWechatBindPanel = true" class="w-full text-left px-3 py-3 text-sm text-slate-600 hover:bg-slate-50 hover:text-green-600 rounded-lg flex items-center gap-3 transition">
+                                    <i class="fa-brands fa-weixin text-slate-400 w-5 text-center"></i> 绑定微信
+                                </button>
+                                <div class="h-px bg-slate-100 my-1 mx-2"></div>
+                                <button @click="logout" class="w-full text-left px-3 py-3 text-sm text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-3 transition">
+                                    <i class="fa-solid fa-power-off w-5 text-center"></i> 退出登录
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+        </transition>
+
+        <!-- 主内容区域 -->
+        <main class="flex-1 relative overflow-y-auto flex flex-col transition-all duration-300 scroll-smooth bg-slate-50" 
+              :class="isImmersiveMode ? 'pb-0' : 'pb-32'">
+            
+            <!-- 视图容器 -->
+            <div class="flex-1 flex flex-col w-full h-full mx-auto transition-all duration-300" 
+                 :class="isImmersiveMode ? 'p-0 max-w-none' : 'p-8 md:p-10 max-w-[1920px]'">
+                <transition name="fade" mode="out-in">
+                    
+                    <dashboard-view 
+                        v-if="currentView === 'dashboard'" 
+                        key="dashboard"
+                        :user="user"
+                        @nav-cloud="enterCloudClassroom"
+                        @show-toast="sysToast"
+                        @nav-ladder="enterLadder"
+                        @nav-calendar="enterCalendar"
+                        @nav-special="enterSpecialCourse"
+                        @nav-cpp="enterCppCore"
+                        @open-problem="openCodingProblem"
+                        @notification-read="handleNotificationRead">
+                    </dashboard-view>
+                    
+                    <cloud-classroom-view 
+                        v-else-if="currentView.startsWith('cloud-')" 
+                        key="cloud-classroom"
+                        :user="user"
+                        @open-problem="openCodingProblem"
+                        @show-toast="showToast"
+                        @show-modal="handleGlobalModal"
+                        @toggle-lockdown="toggleImmersiveMode"
+                    ></cloud-classroom-view>
+
+                   <cpp-core-view 
+                        v-else-if="currentView === 'cpp-home'" 
+                        key="cpp-home"
+                        :user="user"
+                        :initial-tab="cppCoreActiveTab" 
+                        @open-problem="openCodingProblem"
+                        @show-toast="showToast"
+                        @show-modal="handleGlobalModal"
+                        @toggle-lockdown="toggleImmersiveMode"
+                    ></cpp-core-view>
+
+                    <ladder-view 
+                        v-else-if="currentView === 'ladder-home'" 
+                        key="ladder-home"
+                        :user="user"
+                        :view-mode="ladderViewMode" 
+                        @open-problem="openCodingProblem"
+                        @show-toast="showToast"
+                        @show-modal="handleGlobalModal"
+                        @toggle-lockdown="toggleImmersiveMode"
+                    ></ladder-view>
+
+                    <competition-view 
+                        v-else-if="currentView === 'competition-home'" 
+                        key="competition-home"
+                        :user="user"
+                        @open-problem="openCodingProblem"
+                        @show-toast="showToast"
+                        @go-back="currentView = 'dashboard'"
+                        @toggle-lockdown="toggleImmersiveMode"
+                        @show-modal="handleGlobalModal" 
+                    ></competition-view>
+
+                    <exam-center-view 
+                        v-else-if="currentView === 'exam-center'" 
+                        key="exam-center"
+                        :user="user"
+                        @open-problem="openCodingProblem"
+                        @show-toast="showToast"
+                        @show-modal="handleGlobalModal" 
+                        @go-back="currentView = 'dashboard'"
+                        @toggle-lockdown="toggleImmersiveMode"
+                    ></exam-center-view>
+
+                    <gift-view
+                        v-else-if="currentView === 'gift-home'"
+                        key="gift-home"
+                        :user="user"
+                        @redeem-gift="handleRedeemGift"
+                        @show-toast="showToast"
+                        @go-back="currentView = 'dashboard'"
+                        @show-modal="handleGlobalModal"
+                    ></gift-view>
+
+                    <scratch-creative-view 
+                        v-else-if="currentView === 'scratch-creative'" 
+                        key="scratch-creative"
+                        :user="user"
+                        @go-back="currentView = 'dashboard'"
+                        @show-toast="showToast"
+                        @show-modal="handleGlobalModal"
+                        @toggle-lockdown="toggleImmersiveMode"
+                    ></scratch-creative-view>
+
+                    <scratch-personal-view 
+                        v-else-if="currentView === 'scratch-personal'" 
+                        key="scratch-personal"
+                        :user="user"
+                        @go-back="currentView = 'dashboard'"
+                        @show-toast="showToast"
+                        @open-problem="openCodingProblem"
+                        @show-modal="handleGlobalModal"
+                        @toggle-lockdown="toggleImmersiveMode"
+                    ></scratch-personal-view>
+
+                    <scratch-team-view 
+                        v-else-if="currentView === 'scratch-team'" 
+                        key="scratch-team"
+                        :user="user"
+                        @go-back="currentView = 'dashboard'"
+                        @show-toast="showToast"
+                        @show-modal="handleGlobalModal"
+                        @toggle-lockdown="toggleImmersiveMode"
+                    ></scratch-team-view>
+                    
+                    <calendar-view
+                        v-else-if="currentView === 'calendar-home'"
+                        key="calendar-home"
+                        :user="user"
+                        @show-toast="showToast"
+                        @show-modal="handleGlobalModal"
+                        @toggle-lockdown="toggleImmersiveMode"
+                    ></calendar-view>
+
+                    <honor-view
+                        v-else-if="currentView === 'honor-home'"
+                        key="honor-home"
+                        :user="user"
+                        @go-back="currentView = 'dashboard'"
+                        @show-toast="showToast"
+                        @show-modal="handleGlobalModal"
+                        @toggle-lockdown="toggleImmersiveMode"
+                    ></honor-view>
+
+                    <special-course-view
+                        v-else-if="currentView === 'special-course-home'"
+                        key="special-course-home"
+                        :user="user"
+                        @go-back="currentView = 'dashboard'"
+                        @show-toast="showToast"
+                        @show-modal="handleGlobalModal"
+                        @toggle-lockdown="toggleImmersiveMode"
+                    ></special-course-view>
+
+                    <knowledge-view
+                        v-else-if="currentView === 'knowledge-home'"
+                        key="knowledge-home"
+                        :user="user"
+                        @go-back="currentView = 'dashboard'"
+                        @show-toast="showToast"
+                        @show-modal="handleGlobalModal"
+                        @toggle-lockdown="toggleImmersiveMode"
+                    ></knowledge-view>
+
+                    <!-- [NEW] Data Center -->
+                    <data-center-view
+                        v-else-if="currentView === 'data-center'"
+                        key="data-center"
+                        :user="user"
+                        @go-back="currentView = 'dashboard'"
+                        @show-toast="showToast"
+                    ></data-center-view>
+
+                </transition>
+            </div>
+        </main>
+        
+        <!-- 底部遮挡/渐变遮罩层 (Dock Occlusion Mask) -->
+        <transition name="fade">
+            <div v-show="!isImmersiveMode" class="fixed bottom-0 left-0 w-full h-40 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent z-40 pointer-events-none"></div>
+        </transition>
+
+        <!-- 底部 Dock 菜单 -->
+        <transition name="fade">
+            <div v-show="!isImmersiveMode" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-auto" @click.stop>
+                <nav class="flex items-end gap-2 px-6 py-4 bg-[#0f172a]/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative">
+                    <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                    
+                    <!-- Dashboard -->
+                    <div class="dock-item group relative px-2" @click="currentView = 'dashboard'">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-slate-700 to-slate-900 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg border border-white/10 transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-solid fa-house"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-8 bg-white/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView === 'dashboard'" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-white/80 rounded-full shadow-[0_0_5px_white]"></div>
+                    </div>
+
+                    <!-- Scratch -->
+                    <div class="w-px h-8 bg-white/10 mx-2 self-center"></div>
+                    <div class="dock-item group relative px-2" @click="showToast('请选择Scratch模块', 'info')" title="Scratch创意">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-solid fa-cat"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-orange-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView.startsWith('scratch-')" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-orange-400 rounded-full shadow-[0_0_5px_#fb923c]"></div>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-6 w-32 bg-[#1e293b]/95 backdrop-blur-xl rounded-xl shadow-2xl border border-slate-600 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 text-slate-200 text-xs font-medium z-20">
+                            <ul class="py-2">
+                                <li class="px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2" @click.stop="enterScratch('creative')"><i class="fa-solid fa-lightbulb text-orange-400"></i> 创意中心</li>
+                                <li class="px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2" @click.stop="enterScratch('personal')"><i class="fa-solid fa-user-graduate text-orange-400"></i> 个人课堂</li>
+                                <li class="px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2" @click.stop="enterScratch('team')"><i class="fa-solid fa-people-group text-orange-400"></i> 团队课堂</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- C++ Core -->
+                    <div class="dock-item group relative px-2" @click="enterCppCore('notes')" title="C++核心">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-brands fa-cuttlefish"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-indigo-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView === 'cpp-home'" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-400 rounded-full shadow-[0_0_5px_#818cf8]"></div>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-6 w-32 bg-[#1e293b]/95 backdrop-blur-xl rounded-xl shadow-2xl border border-slate-600 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 text-slate-200 text-xs font-medium z-20">
+                            <ul class="py-2">
+                                <li class="px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2" @click.stop="enterCppCore('homework')"><i class="fa-solid fa-briefcase text-indigo-400"></i> 作业</li>
+                                <li class="px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2" @click.stop="enterCppCore('notes')"><i class="fa-solid fa-book-open text-indigo-400"></i> 笔记</li>
+                                <li class="px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2" @click.stop="enterCppCore('class')"><i class="fa-solid fa-users text-indigo-400"></i> 班级</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Cloud Classroom -->
+                    <div class="dock-item group relative px-2" @click="enterCloudClassroom()" title="云课堂">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-solid fa-clapperboard"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-fuchsia-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView.startsWith('cloud-')" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-fuchsia-400 rounded-full shadow-[0_0_5px_#e879f9]"></div>
+                    </div>
+
+                    <!-- Ladder -->
+                    <div class="dock-item group relative px-2" @click="showToast('进入天梯训练', 'info')" title="天梯挑战">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-rose-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView === 'ladder-home'" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-rose-400 rounded-full shadow-[0_0_5px_#fb7185]"></div>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-6 w-32 bg-[#1e293b]/95 backdrop-blur-xl rounded-xl shadow-2xl border border-slate-600 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 text-slate-200 text-xs font-medium z-20">
+                            <ul class="py-2">
+                                <li class="px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2" @click.stop="enterLadder('basic')"><i class="fa-solid fa-ladder-water text-rose-400"></i> 基础天梯</li>
+                                <li class="px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2" @click.stop="enterLadder('algo')"><i class="fa-solid fa-bolt text-rose-400"></i> 算法天梯</li>
+                                <li class="px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2" @click.stop="enterLadder('history')"><i class="fa-solid fa-clock-rotate-left text-rose-400"></i> 历史战绩</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Knowledge -->
+                    <div class="dock-item group relative px-2" @click="enterKnowledge()" title="知识百科">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-solid fa-book-atlas"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-teal-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView === 'knowledge-home'" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-teal-400 rounded-full shadow-[0_0_5px_#2dd4bf]"></div>
+                    </div>
+
+                    <!-- Separator -->
+                    <div class="w-px h-8 bg-white/10 mx-2 self-center"></div>
+
+                    <!-- Exam Center -->
+                    <div class="dock-item group relative px-2" @click="enterExamCenter" title="考试中心">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-solid fa-file-signature"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-blue-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView === 'exam-center'" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-blue-400 rounded-full shadow-[0_0_5px_#60a5fa]"></div>
+                    </div>
+
+                    <!-- Competition -->
+                    <div class="dock-item group relative px-2" @click="enterCompetition()" title="竞赛中心">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-solid fa-trophy"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-amber-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView === 'competition-home'" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-amber-400 rounded-full shadow-[0_0_5px_#fbbf24]"></div>
+                    </div>
+
+                    <!-- Special Course -->
+                    <div class="dock-item group relative px-2" @click="enterSpecialCourse()" title="专题课程">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-cyan-400 to-sky-500 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-cyan-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView === 'special-course-home'" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-cyan-400 rounded-full shadow-[0_0_5px_#22d3ee]"></div>
+                    </div>
+
+                    <!-- Separator -->
+                    <div class="w-px h-8 bg-white/10 mx-2 self-center"></div>
+
+                    <!-- Honor -->
+                    <div class="dock-item group relative px-2" @click="enterHonor()" title="荣誉中心">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-solid fa-award"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-purple-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView === 'honor-home'" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-purple-400 rounded-full shadow-[0_0_5px_#c084fc]"></div>
+                    </div>
+
+                    <!-- Gift -->
+                    <div class="dock-item group relative px-2" @click="enterGift()" title="礼品兑换">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-solid fa-gift"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-pink-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView === 'gift-home'" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-pink-400 rounded-full shadow-[0_0_5px_#f472b6]"></div>
+                    </div>
+
+                    <!-- Calendar -->
+                    <div class="dock-item group relative px-2" @click="enterCalendar" title="学习日历">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-regular fa-calendar-check"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-emerald-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView === 'calendar-home'" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-400 rounded-full shadow-[0_0_5px_#34d399]"></div>
+                    </div>
+                    
+                    <!-- [NEW] Data Center -->
+                    <div class="dock-item group relative px-2" @click="enterDataCenter()" title="数据中心">
+                        <div class="relative z-10 size-12 bg-gradient-to-br from-indigo-500 to-cyan-500 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transition-all duration-300 group-hover:-translate-y-4 group-hover:scale-125 cursor-pointer">
+                            <i class="fa-solid fa-chart-pie"></i>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-cyan-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div v-if="currentView === 'data-center'" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-cyan-400 rounded-full shadow-[0_0_5px_#22d3ee]"></div>
+                    </div>
+                </nav>
+            </div>
+        </transition>
+        
+        <!-- [NEW] 星耀学员沉浸式评价弹窗 -->
+        <Teleport to="body">
+            <transition name="fade">
+                <star-student-view 
+                    v-if="showStarStudentPanel" 
+                    :user="user"
+                    @close="showStarStudentPanel = false">
+                </star-student-view>
+            </transition>
+        </Teleport>
+
+        <!-- [NEW] 财富排行榜沉浸式弹窗 -->
+        <Teleport to="body">
+            <transition name="fade">
+                <wealth-ranking-view 
+                    v-if="showWealthPanel" 
+                    :user="user" 
+                    :currency-config="currencyConfig"
+                    @close="showWealthPanel = false">
+                </wealth-ranking-view>
+            </transition>
+        </Teleport>
+
+        <!-- [NEW] 极客工具箱沉浸式弹窗 -->
+        <Teleport to="body">
+            <transition name="fade">
+                <toolbox-view 
+                    v-if="showToolboxPanel" 
+                    :user="user"
+                     @close="showToolboxPanel = false">
+                    </toolbox-view>
+                 </transition>
+        </Teleport>
+
+        <!-- [NEW] 沉浸式通知中心 -->
+        <Teleport to="body">
+            <transition name="fade">
+                <notification-center-view 
+                    v-if="showAllMessagesPanel" 
+                    :user="user"
+                    :teacher-notifications="teacherNotifications"
+                    :system-messages="systemMessages"
+                    :initial-tab="notificationTab"
+                    @close="showAllMessagesPanel = false"
+                    @mark-read="markMessageAsRead"
+                    @mark-all-read="markAllRead"
+                    @delete-msg="deleteMessage"
+                ></notification-center-view>
+            </transition>
+        </Teleport>
+
+        <!-- [NEW] 个人资料编辑弹窗 -->
+        <Teleport to="body">
+            <transition name="fade">
+                <user-profile-view 
+                    v-if="showProfileEditPanel" 
+                    :user="user"
+                    @close="showProfileEditPanel = false"
+                    @update-user="handleUpdateUser"
+                    @show-toast="showToast"
+                ></user-profile-view>
+            </transition>
+        </Teleport>
+
+        <!-- [NEW] 微信绑定弹窗 -->
+        <Teleport to="body">
+            <transition name="fade">
+                <wechat-bind-view 
+                    v-if="showWechatBindPanel" 
+                    :user="user"
+                    @close="showWechatBindPanel = false"
+                    @show-toast="showToast"
+                ></wechat-bind-view>
+            </transition>
+        </Teleport>
+
+        <!-- 全屏沉浸式卡包弹窗 (z-300) -->
+        <Teleport to="body">
+            <transition name="fade">
+                <div v-if="showCardPanel" class="fixed inset-0 z-[300] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-8 transition-all" @click.self="showCardPanel = false">
+                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh] animate-scale-in border border-slate-200">
+                        <!-- Header -->
+                        <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 backdrop-blur-xl">
+                            <div class="flex items-center gap-4">
+                                <div class="size-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl shadow-inner border border-amber-200">
+                                    <i class="fa-solid fa-wallet"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl font-black text-slate-800 tracking-tight">我的卡包</h2>
+                                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">My Wallet</p>
+                                </div>
+                            </div>
+                            <button @click="showCardPanel = false" class="size-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition flex items-center justify-center border border-slate-200">
+                                <i class="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Content -->
+                        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/50">
+                            <!-- 1. 可用卡券 -->
+                            <div class="mb-10">
+                                <h3 class="flex items-center gap-2 text-sm font-bold text-slate-600 mb-4 uppercase tracking-wider">
+                                    <span class="size-2 rounded-full bg-green-500 animate-pulse"></span>
+                                    可用卡券 ({{ activeCards.length }})
+                                </h3>
+                                
+                                <div v-if="activeCards.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div v-for="card in activeCards" :key="card.id" 
+                                         class="relative rounded-2xl p-6 shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl overflow-hidden group"
+                                         :class="card.type === 'week' ? 'bg-gradient-to-br from-slate-800 to-black text-amber-50' : 'bg-white border border-blue-200 text-slate-700'">
+                                        
+                                        <!-- 背景装饰 -->
+                                        <div v-if="card.type === 'week'" class="absolute -right-6 -bottom-6 text-8xl opacity-10 rotate-12"><i class="fa-solid fa-crown"></i></div>
+                                        <div v-else class="absolute -right-6 -bottom-6 text-8xl opacity-5 rotate-12 text-blue-600"><i class="fa-regular fa-clock"></i></div>
+                                        <div class="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <i class="fa-solid fa-arrow-up-right-from-square text-sm"></i>
+                                        </div>
+
+                                        <div class="relative z-10 flex justify-between">
+                                            <div>
+                                                <div class="flex items-center gap-2 mb-2">
+                                                    <span class="text-xs font-bold px-2 py-0.5 rounded border" 
+                                                          :class="card.type === 'week' ? 'border-amber-500/50 text-amber-400 bg-amber-500/10' : 'border-blue-400 text-blue-500 bg-blue-50'">
+                                                        {{ card.type === 'week' ? '周卡' : '小时卡' }}
+                                                    </span>
+                                                    <span v-if="card.status === 'active' && card.type === 'week'" class="flex items-center gap-1 text-[10px] text-green-400 font-bold bg-green-500/10 px-1.5 rounded">
+                                                        <span class="size-1.5 bg-green-400 rounded-full"></span> 生效中
+                                                    </span>
+                                                </div>
+                                                <h4 class="font-bold text-xl leading-tight mb-1">{{ card.name }}</h4>
+                                                <p class="text-xs opacity-70 max-w-[200px] leading-relaxed">{{ card.desc }}</p>
+                                            </div>
+                                            
+                                            <div class="text-right flex flex-col justify-between items-end">
+                                                <div v-if="card.type === 'hour'" class="text-3xl font-mono font-black text-blue-600 tracking-tighter">{{ card.balance }}<span class="text-sm ml-1 font-bold text-blue-400">H</span></div>
+                                                
+                                                <div v-if="card.type === 'week'">
+                                                    <button v-if="card.status === 'inactive'" @click="activateWeekCard(card.id)" 
+                                                            class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-900 text-xs font-bold px-4 py-2 rounded-full transition shadow-lg shadow-amber-500/20 transform active:scale-95">
+                                                        立即激活
+                                                    </button>
+                                                    <div v-else class="text-right">
+                                                        <div class="text-[10px] text-amber-400/80 mb-0.5">有效期至</div>
+                                                        <div class="text-sm font-mono font-bold tracking-wide">{{ card.validUntil }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else class="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl bg-white/50">
+                                    <i class="fa-solid fa-wallet text-4xl mb-3 text-slate-300"></i>
+                                    <p class="text-sm text-slate-400">暂无可用卡券</p>
+                                </div>
+                            </div>
+
+                            <!-- 2. 失效/历史记录 -->
+                            <div class="opacity-60 hover:opacity-100 transition-opacity duration-300">
+                                <h3 class="flex items-center gap-2 text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider">
+                                    <i class="fa-solid fa-clock-rotate-left"></i> 失效/历史记录 ({{ inactiveCards.length }})
+                                </h3>
+                                <div v-if="inactiveCards.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div v-for="card in inactiveCards" :key="card.id" 
+                                         class="relative rounded-2xl p-5 border border-slate-200 bg-slate-100 text-slate-500 overflow-hidden grayscale hover:grayscale-0 transition-all">
+                                        
+                                        <!-- 水印 -->
+                                        <div class="absolute -right-2 -bottom-2 text-6xl opacity-10 rotate-12">
+                                            <i :class="card.status === 'expired' ? 'fa-solid fa-calendar-xmark' : 'fa-solid fa-ban'"></i>
+                                        </div>
+                                        
+                                        <div class="flex justify-between items-start relative z-10">
+                                            <div>
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="text-[10px] px-1.5 py-0.5 rounded border border-slate-300 bg-white">
+                                                        {{ card.type === 'week' ? '周卡' : '小时卡' }}
+                                                    </span>
+                                                    <span class="text-[10px] font-bold bg-slate-200 px-1.5 rounded">{{ card.status === 'expired' ? '已过期' : '已耗尽' }}</span>
+                                                </div>
+                                                <h4 class="font-bold text-base">{{ card.name }}</h4>
+                                                <p class="text-[10px] mt-1">{{ card.deadline }} 失效</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <div v-if="card.type === 'hour'" class="text-xl font-mono font-bold text-slate-400">0<span class="text-xs ml-1">H</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else class="text-center py-6 text-slate-400 text-xs">
+                                    - 暂无历史记录 -
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </transition>
+        </Teleport>
+
+        <!-- 编程工作台组件 -->
+        <coding-workspace v-if="workspaceTabs.length > 0 && isWorkspaceVisible" :tabs="workspaceTabs" :active-index="activeTabIndex" :user="user" :restricted-mode="isImmersiveMode" @update:active-index="(val) => activeTabIndex = val" @close-tab="closeWorkspaceTab" @minimize="minimizeWorkspace" @save="saveCode" @toast="showToast" @show-modal="handleGlobalModal" @open-search-result="openCodingProblem"></coding-workspace>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="feature-star-student.js"></script> 
+    <script src="feature-wealth-ranking.js"></script> 
+    <script src="feature-toolbox.js"></script>
+    <script src="feature-notification.js"></script> 
+    <script src="feature-user-profile.js"></script> 
+    <script src="feature-wechat-bind.js"></script> 
+    <script src="feature-data-center.js"></script> 
+    <script src="feature-dashboard.js"></script> 
+    <script src="feature-cloud-classroom.js"></script>
+    <script src="feature-ladder.js"></script>  
+    <script src="feature-competition.js"></script> 
+    <script src="feature-exam-center.js"></script>
+    <script src="feature-scratch-creative.js"></script>
+    <script src="feature-scratch-personal.js"></script>
+    <script src="feature-scratch-team.js"></script>
+    <script src="feature-cpp-core.js"></script> 
+    <script src="feature-calendar.js"></script>
+    <script src="feature-coding-workspace.js"></script>
+    <script src="feature-gift.js"></script> 
+    <script src="feature-honor.js"></script>
+    <script src="feature-special-course.js"></script>
+    <script src="feature-knowledge.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
